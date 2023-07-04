@@ -1,41 +1,44 @@
-#################################
-# Compiled source               #
-#################################
 target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
 
-#################################
-# Docker & Compose files        #
-#################################
-.nexus/
-.env
-
-#################################
-# IDE generated files           #
-#################################
-.idea/
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
 *.iml
-.settings/
+*.ipr
+
+### Eclipse ###
+.apt_generated
 .classpath
+.factorypath
 .project
+.settings
+.springBeans
+.sts4-cache
 
-#################################
-# Logs and temp files           #
-#################################
-*.log
-*.swp
-*~
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-#################################
-# OS generated files            #
-#################################
-Thumbs.db
-.directory
+### VS Code ###
+.vscode/
+
+### Mac OS ###
 .DS_Store
 
-
-snyk-sdk/bin
-plugin/bin
-.factorypath
-**/cypress/videos
-**/cypress/screenshots
-**/node_modules
+.idea
+node_modules
+archive
+.nexus
+target

@@ -1,5 +1,5 @@
 describe("test", () => {
-  it("log in, update password, and add Snyk plugin (Capability)", () => {
+  it("log in, update password, and add checkmarx plugin (Capability)", () => {
     cy.visit("http://localhost:8081");
     cy.get('a[data-qtip="Sign in"]').should("be.visible").click();
     cy.get(".x-title-text").should("contain", "Sign In").should("be.visible");
@@ -85,14 +85,14 @@ describe("test", () => {
     cy.contains('a[role="button"]', "Create capability").click();
     cy.contains("Loading").should("not.be.visible");
     cy.contains("Select Capability Type").should("be.visible");
-    cy.contains("td:visible", "Snyk Security Configuration")
+    cy.contains("td:visible", "checkmarx Security Configuration")
       .should("be.visible")
       .click();
-    cy.get('input[name="property_snyk.api.token"]')
+    cy.get('input[name="property_checkmarx.api.token"]')
       .should("be.visible")
-      .type(Cypress.env("snykToken"));
-    cy.get('input[name="property_snyk.organization.id"]').type(
-      Cypress.env("snykOrg")
+      .type(Cypress.env("checkmarxToken"));
+    cy.get('input[name="property_checkmarx.organization.id"]').type(
+      Cypress.env("checkmarxOrg")
     );
     cy.contains("a:visible", "Create capability").should("be.visible").click();
   });

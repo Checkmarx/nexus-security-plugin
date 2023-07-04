@@ -41,14 +41,14 @@
 
         - name: Build plugin
           env:
-            TEST_SNYK_TOKEN: ${{ secrets.TEST_SNYK_TOKEN }}
-            TEST_SNYK_ORG: ${{ secrets.TEST_SNYK_ORG }}
+            TEST_checkmarx_TOKEN: ${{ secrets.TEST_checkmarx_TOKEN }}
+            TEST_checkmarx_ORG: ${{ secrets.TEST_checkmarx_ORG }}
           run: |
             ./mvnw clean verify -DskipTests --show-version --batch-mode --errors -PbuildKar -Drevision=${{ steps.metadata.outputs.tag }}
-            ls -la ${GITHUB_WORKSPACE}/plugin/target/nexus-snyk-security-plugin-bundle.kar
+            ls -la ${GITHUB_WORKSPACE}/plugin/target/nexus-checkmarx-security-plugin-bundle.kar
 
-        - name: Start the Nexus container with Snyk plugin mounted
-          run: docker run -d --name nexus -p 8081:8081 -v ${GITHUB_WORKSPACE}/plugin/target/nexus-snyk-security-plugin-bundle.kar:/opt/sonatype/nexus/deploy/nexus-snyk-security-plugin-bundle.kar sonatype/nexus3
+        - name: Start the Nexus container with checkmarx plugin mounted
+          run: docker run -d --name nexus -p 8081:8081 -v ${GITHUB_WORKSPACE}/plugin/target/nexus-checkmarx-security-plugin-bundle.kar:/opt/sonatype/nexus/deploy/nexus-checkmarx-security-plugin-bundle.kar sonatype/nexus3
 
         - name: Wait for Nexus start
           run: npx wait-on --timeout 120000 --interval 2000 http://localhost:8081/
@@ -56,7 +56,7 @@
         - name: Wait for API status endpoint
           run: npx wait-on --timeout 120000 --interval 2000 http://localhost:8081/service/rest/v1/status/writable
 
-        - name: Run Cypress to log in to Nexus and set up Snyk plugin
+        - name: Run Cypress to log in to Nexus and set up checkmarx plugin
           working-directory: test/smoke
           run: |
             docker exec nexus cat /nexus-data/admin.password > /tmp/password
@@ -65,8 +65,8 @@
             cat /tmp/password
             cypress run
           env:
-            TEST_SNYK_TOKEN: ${{ secrets.TEST_SNYK_TOKEN }}
-            TEST_SNYK_ORG: ${{ secrets.TEST_SNYK_ORG }}
+            TEST_checkmarx_TOKEN: ${{ secrets.TEST_checkmarx_TOKEN }}
+            TEST_checkmarx_ORG: ${{ secrets.TEST_checkmarx_ORG }}
 
         - name: Setup npm
           run: npm install
@@ -83,14 +83,14 @@
           if: always()
           with:
             name: screenshots
-            path: /home/runner/work/nexus-snyk-security-plugin/nexus-snyk-security-plugin/test/smoke/cypress/screenshots/cypress-test.spec.js/
+            path: /home/runner/work/nexus-checkmarx-security-plugin/nexus-checkmarx-security-plugin/test/smoke/cypress/screenshots/cypress-test.spec.js/
             retention-days: 1
 
         - uses: actions/upload-artifact@v2
           if: always()
           with:
             name: video
-            path: /home/runner/work/nexus-snyk-security-plugin/nexus-snyk-security-plugin/test/smoke/cypress/videos/cypress-test.spec.js.mp4
+            path: /home/runner/work/nexus-checkmarx-security-plugin/nexus-checkmarx-security-plugin/test/smoke/cypress/videos/cypress-test.spec.js.mp4
             retention-days: 1
 
         - name: Save docker logs to file
@@ -98,8 +98,8 @@
           with:
             dest: "./logs"
 
-        - name: Find any Snyk plugin errors in docker logs
-          run: "! grep -Hrni snyk ./logs | grep -i error"
+        - name: Find any checkmarx plugin errors in docker logs
+          run: "! grep -Hrni checkmarx ./logs | grep -i error"
 
         - name: Dump docker logs (on success)
           uses: jwalton/gh-docker-logs@v1

@@ -1,5 +1,5 @@
 {
-  "name": "nexus-snyk-security-plugin",
+  "name": "nexus-checkmarx-security-plugin",
   "description": "For testing",
   "main": "index.js",
   "scripts": {
@@ -7,12 +7,12 @@
     "format": "prettier --write '**/*.{js,ts}'",
     "lint:formatting": "prettier --check '**/*.{js,ts}'"
   },
-  "author": "Snyk",
+  "author": "checkmarx",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/snyk/nexus-snyk-security-plugin/issues"
+    "url": "https://github.com/checkmarx/nexus-checkmarx-security-plugin/issues"
   },
-  "homepage": "https://github.com/snyk/nexus-snyk-security-plugin#readme",
+  "homepage": "https://github.com/checkmarx/nexus-checkmarx-security-plugin#readme",
   "devDependencies": {
     "@types/jest": "^27.0.2",
     "@types/node": "^16.11.0",

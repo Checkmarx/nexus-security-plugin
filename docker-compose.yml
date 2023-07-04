@@ -2,7 +2,7 @@ version: "3.7"
 services:
 
   repository:
-    image: sonatype/nexus3:3.19.1
+    image: sonatype/nexus3:latest
     environment:
       INSTALL4J_ADD_VM_PARAMS: "-Xms512m -Xmx1024m -Djava.util.prefs.userRoot=/nexus-data/javaprefs -agentlib:jdwp=transport=dt_socket,server=y,address=8082,suspend=n"
     ports:
