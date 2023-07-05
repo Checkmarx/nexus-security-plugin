@@ -10,6 +10,7 @@ import com.checkmarx.plugins.nexus.capability.CheckmarxSecurityCapabilityConfigu
 import com.checkmarx.sdk.api.v1.CheckmarxClient;
 import com.checkmarx.sdk.api.v1.PackageRequest;
 import com.checkmarx.sdk.api.v1.PackageResponse;
+import com.checkmarx.sdk.util.PackageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonatype.nexus.common.collect.NestedAttributesMap;
@@ -104,7 +105,7 @@ public class ScannerHandler implements ContributedHandler {
 
 			return response;
 		} catch (PackageTypeNotSupportedException e) {
-			// TODO log
+			LOG.warn("Package type not supported: {}", e.getMessage());
 			return response;
 		}
 	}
@@ -128,8 +129,7 @@ public class ScannerHandler implements ContributedHandler {
 			throw new RuntimeException("could not parse response");
 		}
 
-		ScanResult scanResult = null;
-		PackageRequest packageRequest = null;
+		PackageRequest packageRequest;
 		String repositoryFormat = repository.getFormat().getValue();
 		switch (repositoryFormat) {
 			case "maven2": {
@@ -146,32 +146,49 @@ public class ScannerHandler implements ContributedHandler {
 					LOG.warn("Coordinates are null for {}", parsedMavenPath);
 					return null;
 				}
-
-
 				break;
 			}
 			case "npm": {
-				break;
-			}
-			case "pypi": {
-				packageType = "pypi";
-				NestedAttributesMap pypiAttributes = asset.attributes().child("pypi");
+				packageType = PackageType.NPM.getType();
+				NestedAttributesMap pypiAttributes;
+				pypiAttributes = asset.attributes().child(packageType);
 				Object nameAttribute = pypiAttributes.get("name");
 				packageName = nameAttribute != null ? nameAttribute.toString() : "";
 				Object versionAttribute = pypiAttributes.get("version");
 				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
-
+				break;
+			}
+			case "pypi": {
+				packageType = PackageType.PYPI.getType();
+				NestedAttributesMap pypiAttributes;
+				pypiAttributes = asset.attributes().child(packageType);
+				Object nameAttribute = pypiAttributes.get("name");
+				packageName = nameAttribute != null ? nameAttribute.toString() : "";
+				Object versionAttribute = pypiAttributes.get("version");
+				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
 				break;
 			}
 			case "rubygems": {
+				packageType = PackageType.RUBYGEMS.getType();
+				NestedAttributesMap pypiAttributes;
+				pypiAttributes = asset.attributes().child(packageType);
+				Object nameAttribute = pypiAttributes.get("name");
+				packageName = nameAttribute != null ? nameAttribute.toString() : "";
+				Object versionAttribute = pypiAttributes.get("version");
+				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
 				break;
 			}
 			case "nuget": {
+				packageType = PackageType.NUGET.getType();
+				NestedAttributesMap pypiAttributes = asset.attributes().child(packageType);
+				Object nameAttribute = pypiAttributes.get("name");
+				packageName = nameAttribute != null ? nameAttribute.toString() : "";
+				Object versionAttribute = pypiAttributes.get("version");
+				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
 				break;
 			}
 			default:
 				throw new PackageTypeNotSupportedException(MessageFormat.format("package type \"{0}\" not supported", repositoryFormat));
-
 		}
 
 		packageRequest = new PackageRequest(packageType, packageName, packageVersion);

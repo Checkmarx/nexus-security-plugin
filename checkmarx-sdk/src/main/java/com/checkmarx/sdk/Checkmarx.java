@@ -24,7 +24,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public class Checkmarx {
 
-	public static final String DEFAULT_BASE_URL = "https://api.dusti.co/v1/";
+	private static final String DEFAULT_BASE_URL = "https://api.dusti.co/v1/";
 	private static final String DEFAULT_USER_AGENT = "checkmarx-sdk-java";
 	private static final long DEFAULT_CONNECTION_TIMEOUT = 30_000L;
 	private static final long DEFAULT_READ_TIMEOUT = 60_000L;
@@ -62,7 +62,7 @@ public class Checkmarx {
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 		retrofit = new Retrofit.Builder().client(builder.build())
-			.baseUrl(Checkmarx.DEFAULT_BASE_URL)
+			.baseUrl("https://api.dusti.co/v1/")
 			.addConverterFactory(JacksonConverterFactory.create(objectMapper))
 			.build();
 	}
