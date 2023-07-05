@@ -17,7 +17,7 @@ import org.sonatype.nexus.common.collect.NestedAttributesMap;
 import org.sonatype.nexus.repository.Repository;
 import org.sonatype.nexus.repository.Type;
 import org.sonatype.nexus.repository.maven.MavenPath;
-import org.sonatype.nexus.repository.maven.internal.Maven2MavenPathParser;
+import org.sonatype.nexus.repository.maven.MavenPathParser;
 import org.sonatype.nexus.repository.storage.Asset;
 import org.sonatype.nexus.repository.view.Content;
 import org.sonatype.nexus.repository.view.Context;
@@ -38,13 +38,13 @@ public class ScannerHandler implements ContributedHandler {
 	private static final Logger LOG = LoggerFactory.getLogger(ScannerHandler.class);
 
 	private final ConfigurationHelper configurationHelper;
-	private final Maven2MavenPathParser mavenPathParser;
+	private final MavenPathParser mavenPathParser;
 
 	private CheckmarxClient checkmarxClient;
 	private CheckmarxSecurityCapabilityConfiguration configuration;
 
 	@Inject
-	public ScannerHandler(final ConfigurationHelper configurationHelper, Maven2MavenPathParser mavenPathParser) {
+	public ScannerHandler(final ConfigurationHelper configurationHelper, final MavenPathParser mavenPathParser) {
 		LOG.info("ScannerHandler constructor");
 		this.configurationHelper = configurationHelper;
 		this.mavenPathParser = mavenPathParser;
@@ -71,6 +71,7 @@ public class ScannerHandler implements ContributedHandler {
 				scanResult.addRisk(riskTitle);
 			}
 		}
+		LOG.info(MessageFormat.format("scanned package \"{0}/{1}\" with {2} risks", packageRequest.getType(), packageRequest.getName(), scanResult.getRisksCount()));
 		return scanResult;
 	}
 
@@ -86,17 +87,21 @@ public class ScannerHandler implements ContributedHandler {
 	@Override
 	public Response handle(@Nonnull Context context) throws Exception {
 		Response response = context.proceed();
+
+		LOG.info(MessageFormat.format("checking {0}", context.getRequest().getPath()));
+
 		if (!configurationHelper.isCapabilityEnabled()) {
-			LOG.debug("CheckmarxSecurityCapability is not enabled.");
+			LOG.warn("CheckmarxSecurityCapability is not enabled.");
 			return response;
 		}
+
 
 
 		try {
 			PackageRequest packageRequest = getPackageRequest(response, context);
 			ScanResult scanResult = scanPackage(checkmarxClient, packageRequest);
-			if (scanResult.getRisks().size() > 0) {
-				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin. Package name: \"{0}/{1}\" contains the following risks: {2}", packageRequest.getType(), packageRequest.getName(), scanResult.getRisks());
+			if (scanResult.getRisksCount() > 0) {
+				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin. Package name: \"{0}/{1}\" contains the following risks: {2}", packageRequest.getType(), packageRequest.getName(), scanResult.getRisksCount());
 				LOG.error(errorMessage);
 				throw new RuntimeException(errorMessage);
 			}
@@ -133,17 +138,17 @@ public class ScannerHandler implements ContributedHandler {
 			case "maven2": {
 				Object mavenPathAttribute = context.getAttributes().get(MavenPath.class.getName());
 				if (!(mavenPathAttribute instanceof MavenPath)) {
-					LOG.warn("Could not extract maven path from {}", context.getRequest().getPath());
-					return null;
+					throw new RuntimeException(MessageFormat.format("Could not extract maven path from {0}", context.getRequest().getPath()));
 				}
 
 				MavenPath mavenPath = (MavenPath) mavenPathAttribute;
 				MavenPath parsedMavenPath = mavenPathParser.parsePath(mavenPath.getPath());
 				MavenPath.Coordinates coordinates = parsedMavenPath.getCoordinates();
 				if (coordinates == null) {
-					LOG.warn("Coordinates are null for {}", parsedMavenPath);
-					return null;
+					throw new RuntimeException(MessageFormat.format("Coordinates are null for {0}", parsedMavenPath));
 				}
+
+				// TODO -> set in package name type version the values
 				break;
 			}
 			case "npm": {

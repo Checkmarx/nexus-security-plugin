@@ -62,7 +62,7 @@ public class Checkmarx {
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 		retrofit = new Retrofit.Builder().client(builder.build())
-			.baseUrl("https://api.dusti.co/v1/")
+			.baseUrl(Checkmarx.DEFAULT_BASE_URL)
 			.addConverterFactory(JacksonConverterFactory.create(objectMapper))
 			.build();
 	}
