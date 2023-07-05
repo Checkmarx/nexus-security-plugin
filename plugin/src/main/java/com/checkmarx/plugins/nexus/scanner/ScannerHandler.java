@@ -32,8 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static java.lang.String.format;
-
 @Named
 @Singleton
 public class ScannerHandler implements ContributedHandler {
