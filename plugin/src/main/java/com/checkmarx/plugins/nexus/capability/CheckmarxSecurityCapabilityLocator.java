@@ -10,13 +10,13 @@ import org.sonatype.nexus.capability.CapabilityReference;
 import org.sonatype.nexus.capability.CapabilityRegistry;
 
 @Named
-public class checkmarxSecurityCapabilityLocator {
-  private static final Logger LOG = LoggerFactory.getLogger(checkmarxSecurityCapabilityLocator.class);
+public class CheckmarxSecurityCapabilityLocator {
+  private static final Logger LOG = LoggerFactory.getLogger(CheckmarxSecurityCapabilityLocator.class);
 
   private final CapabilityRegistry capabilityRegistry;
 
   @Inject
-  public checkmarxSecurityCapabilityLocator(final CapabilityRegistry capabilityRegistry) {
+  public CheckmarxSecurityCapabilityLocator(final CapabilityRegistry capabilityRegistry) {
     this.capabilityRegistry = capabilityRegistry;
   }
 
@@ -27,26 +27,26 @@ public class checkmarxSecurityCapabilityLocator {
                                                         Capability capability = e.capability();
                                                         LOG.debug("  {}", capability);
                                                       })
-                                                      .filter(e -> checkmarxSecurityCapability.class.getSimpleName().equals(e.capability().getClass().getSimpleName()))
+                                                      .filter(e -> CheckmarxSecurityCapability.class.getSimpleName().equals(e.capability().getClass().getSimpleName()))
                                                       .findFirst().orElse(null);
     if (reference == null) {
-      LOG.debug("checkmarx Security Configuration capability does not exist.");
+      LOG.debug("Checkmarx Security Configuration capability does not exist.");
       return false;
     }
 
     return reference.context().isActive();
   }
 
-  public checkmarxSecurityCapabilityConfiguration getCheckmarxSecurityCapabilityConfiguration() {
+  public CheckmarxSecurityCapabilityConfiguration getCheckmarxSecurityCapabilityConfiguration() {
     CapabilityReference reference = capabilityRegistry.getAll().stream()
-                                                      .filter(e -> checkmarxSecurityCapability.class.getSimpleName().equals(e.capability().getClass().getSimpleName()))
+                                                      .filter(e -> CheckmarxSecurityCapability.class.getSimpleName().equals(e.capability().getClass().getSimpleName()))
                                                       .findFirst().orElse(null);
     if (reference == null) {
-      LOG.debug("checkmarx Security Configuration capability not created.");
+      LOG.debug("Checkmarx Security Configuration capability not created.");
       return null;
     }
 
-    checkmarxSecurityCapability checkmarxSecurityCapability = reference.capabilityAs(checkmarxSecurityCapability.class);
+    CheckmarxSecurityCapability checkmarxSecurityCapability = reference.capabilityAs(CheckmarxSecurityCapability.class);
     return checkmarxSecurityCapability.getConfig();
   }
 }

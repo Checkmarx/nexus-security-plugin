@@ -1,10 +1,9 @@
 package com.checkmarx.sdk.api.v1;
 
 import com.checkmarx.sdk.model.NotificationSettings;
-import com.checkmarx.sdk.model.TestResult;
 import retrofit2.Call;
 import retrofit2.http.*;
-import com.checkmarx.sdk.util.Package;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,7 +26,7 @@ public interface CheckmarxClient {
    * </ul>
    */
   @POST("packages/")
-  Call<List<TestResult>> analyzePackage(@Body ArrayList<Package> packages, @Header("Authorization") String token);
+  Call<List<PackageResponse>> analyzePackage(@Body ArrayList<PackageRequest> packageRequests);
 
   /**
    * Test NPM packages for issues according to their name and version:

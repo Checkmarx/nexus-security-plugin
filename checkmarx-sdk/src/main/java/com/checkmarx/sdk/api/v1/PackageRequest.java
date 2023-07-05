@@ -1,12 +1,12 @@
-package com.checkmarx.sdk.util;
+package com.checkmarx.sdk.api.v1;
 
 
-public class Package {
+public class PackageRequest {
 	private String type;
 	private String name;
 	private String version;
 
-	public Package(String type, String name, String version) {
+	public PackageRequest(String type, String name, String version) {
 		this.type = type;
 		this.name = name;
 		this.version = version;

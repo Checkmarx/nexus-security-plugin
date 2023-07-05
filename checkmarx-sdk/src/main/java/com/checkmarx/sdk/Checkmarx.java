@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.checkmarx.sdk.config.SSLConfiguration;
-import com.checkmarx.sdk.config.checkmarxProxyConfig;
+import com.checkmarx.sdk.config.CheckmarxProxyConfig;
 import com.checkmarx.sdk.interceptor.ServiceInterceptor;
 import okhttp3.*;
 import retrofit2.Retrofit;
@@ -22,9 +22,9 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class checkmarx {
+public class Checkmarx {
 
-	private static final String DEFAULT_BASE_URL = "https://api.dusti.co/v1/";
+	public static final String DEFAULT_BASE_URL = "https://api.dusti.co/v1/";
 	private static final String DEFAULT_USER_AGENT = "checkmarx-sdk-java";
 	private static final long DEFAULT_CONNECTION_TIMEOUT = 30_000L;
 	private static final long DEFAULT_READ_TIMEOUT = 60_000L;
@@ -32,9 +32,9 @@ public class checkmarx {
 
 	private final Retrofit retrofit;
 
-	private checkmarx(Config config) throws Exception {
+	private Checkmarx(Config config) throws Exception {
 		if (config.token == null || config.token.isEmpty()) {
-			throw new IllegalArgumentException("checkmarx API token is empty");
+			throw new IllegalArgumentException("Checkmarx API token is empty");
 		}
 
 		OkHttpClient.Builder builder = new OkHttpClient.Builder().connectTimeout(DEFAULT_CONNECTION_TIMEOUT, MILLISECONDS)
@@ -62,7 +62,7 @@ public class checkmarx {
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 		retrofit = new Retrofit.Builder().client(builder.build())
-			.baseUrl("https://api.dusti.co/v1/")
+			.baseUrl(Checkmarx.DEFAULT_BASE_URL)
 			.addConverterFactory(JacksonConverterFactory.create(objectMapper))
 			.build();
 	}
@@ -101,8 +101,8 @@ public class checkmarx {
 		}
 	}
 
-	public static checkmarx newBuilder(Config config) throws Exception {
-		return new checkmarx(config);
+	public static Checkmarx newBuilder(Config config) throws Exception {
+		return new Checkmarx(config);
 	}
 
 	public CheckmarxClient buildSync() {
@@ -115,29 +115,29 @@ public class checkmarx {
 		String userAgent;
 		boolean trustAllCertificates;
 		String sslCertificatePath;
-		checkmarxProxyConfig proxyConfig;
+		CheckmarxProxyConfig proxyConfig;
 
 		public Config(String token) {
 			this(DEFAULT_BASE_URL, token, null);
 		}
 
-		public Config(String token, checkmarxProxyConfig proxyConfig) {
+		public Config(String token, CheckmarxProxyConfig proxyConfig) {
 			this(DEFAULT_BASE_URL, token, proxyConfig);
 		}
 
-		public Config(String baseUrl, String token, checkmarxProxyConfig proxyConfig) {
+		public Config(String baseUrl, String token, CheckmarxProxyConfig proxyConfig) {
 			this(baseUrl, token, DEFAULT_USER_AGENT, proxyConfig);
 		}
 
-		public Config(String baseUrl, String token, String userAgent, checkmarxProxyConfig proxyConfig) {
+		public Config(String baseUrl, String token, String userAgent, CheckmarxProxyConfig proxyConfig) {
 			this(baseUrl, token, userAgent, false, proxyConfig);
 		}
 
-		public Config(String baseUrl, String token, String userAgent, boolean trustAllCertificates, checkmarxProxyConfig proxyConfig) {
+		public Config(String baseUrl, String token, String userAgent, boolean trustAllCertificates, CheckmarxProxyConfig proxyConfig) {
 			this(baseUrl, token, userAgent, trustAllCertificates, "", proxyConfig);
 		}
 
-		public Config(String baseUrl, String token, String userAgent, boolean trustAllCertificates, String sslCertificatePath, checkmarxProxyConfig proxyConfig) {
+		public Config(String baseUrl, String token, String userAgent, boolean trustAllCertificates, String sslCertificatePath, CheckmarxProxyConfig proxyConfig) {
 			this.baseUrl = baseUrl;
 			this.token = token;
 			this.userAgent = userAgent;

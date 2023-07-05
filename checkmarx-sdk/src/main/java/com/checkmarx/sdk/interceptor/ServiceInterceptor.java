@@ -23,7 +23,7 @@ public class ServiceInterceptor implements Interceptor {
     Request.Builder builder = chain.request().newBuilder();
 
     builder.addHeader("Accept", "application/json")
-           .addHeader("Authorization", "token " + token)
+           .addHeader("Authorization", token)
            .addHeader("Content-Type", "application/json")
            .addHeader("User-Agent", userAgent);
 

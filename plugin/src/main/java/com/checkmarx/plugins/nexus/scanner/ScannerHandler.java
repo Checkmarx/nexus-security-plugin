@@ -6,18 +6,30 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import com.checkmarx.plugins.nexus.model.ScanResult;
-import com.checkmarx.plugins.nexus.util.Formatter;
-import com.checkmarx.plugins.nexus.capability.checkmarxSecurityCapabilityConfiguration;
+import com.checkmarx.plugins.nexus.capability.CheckmarxSecurityCapabilityConfiguration;
 import com.checkmarx.sdk.api.v1.CheckmarxClient;
-import jline.internal.Log;
+import com.checkmarx.sdk.api.v1.PackageRequest;
+import com.checkmarx.sdk.api.v1.PackageResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sonatype.nexus.common.collect.NestedAttributesMap;
 import org.sonatype.nexus.repository.Repository;
-import org.sonatype.nexus.repository.types.ProxyType;
+import org.sonatype.nexus.repository.Type;
+import org.sonatype.nexus.repository.maven.MavenPath;
+import org.sonatype.nexus.repository.maven.internal.Maven2MavenPathParser;
+import org.sonatype.nexus.repository.storage.Asset;
+import org.sonatype.nexus.repository.view.Content;
 import org.sonatype.nexus.repository.view.Context;
 import org.sonatype.nexus.repository.view.Payload;
 import org.sonatype.nexus.repository.view.Response;
 import org.sonatype.nexus.repository.view.handlers.ContributedHandler;
+import retrofit2.Call;
+
+import java.io.IOException;
+import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static java.lang.String.format;
 
@@ -27,30 +39,48 @@ public class ScannerHandler implements ContributedHandler {
 	private static final Logger LOG = LoggerFactory.getLogger(ScannerHandler.class);
 
 	private final ConfigurationHelper configurationHelper;
-	public final MavenScanner mavenScanner;
-	private final NpmScanner npmScanner;
-	private final PypiScanner pypiScanner;
-	private final RubygemsScanner rubygemsScanner;
-	private final NugetScanner nugetScanner;
+	private final Maven2MavenPathParser mavenPathParser;
 
-	private CheckmarxClient CheckmarxClient;
-	private checkmarxSecurityCapabilityConfiguration configuration;
+	private CheckmarxClient checkmarxClient;
+	private CheckmarxSecurityCapabilityConfiguration configuration;
 
 	@Inject
-	public ScannerHandler(final ConfigurationHelper configurationHelper,
-						  final MavenScanner mavenScanner,
-						  final NpmScanner npmScanner,
-						  final PypiScanner pypiScanner,
-						  final RubygemsScanner rubygemsScanner,
-						  final NugetScanner nugetScanner) {
+	public ScannerHandler(final ConfigurationHelper configurationHelper, Maven2MavenPathParser mavenPathParser) {
 		LOG.info("ScannerHandler constructor");
 		this.configurationHelper = configurationHelper;
-		this.mavenScanner = mavenScanner;
-		this.npmScanner = npmScanner;
-		this.pypiScanner = pypiScanner;
-		this.rubygemsScanner = rubygemsScanner;
-		this.nugetScanner = nugetScanner;
+		this.mavenPathParser = mavenPathParser;
 		initializeModuleIfNeeded();
+	}
+
+
+	private static ScanResult scanPackage(CheckmarxClient checkmarxClient, PackageRequest packageRequest) throws IOException {
+		ScanResult scanResult = new ScanResult();
+		List<PackageResponse> packageResponse;
+		ArrayList<PackageRequest> packageRequests = new ArrayList<>();
+		packageRequests.add(packageRequest);
+		Call<List<PackageResponse>> call = checkmarxClient.analyzePackage(packageRequests);
+		retrofit2.Response<List<PackageResponse>> response = call.execute();
+		packageResponse = response.body();
+
+		if (!response.isSuccessful() || packageResponse == null) {
+			throw new RuntimeException(); // TODO exception
+		}
+
+		for (PackageResponse result : packageResponse) {
+			for (Map<String, String> risk : result.risks) {
+				String riskTitle = risk.get("title");
+				scanResult.addRisk(riskTitle);
+			}
+		}
+		return scanResult;
+	}
+
+
+	private static class PackageTypeNotSupportedException extends Exception {
+
+		public PackageTypeNotSupportedException(String message) {
+			super(message);
+		}
 	}
 
 	@Nonnull
@@ -58,84 +88,105 @@ public class ScannerHandler implements ContributedHandler {
 	public Response handle(@Nonnull Context context) throws Exception {
 		Response response = context.proceed();
 		if (!configurationHelper.isCapabilityEnabled()) {
-			LOG.debug("checkmarxSecurityCapability is not enabled.");
+			LOG.debug("CheckmarxSecurityCapability is not enabled.");
 			return response;
 		}
 
+
+		try {
+			PackageRequest packageRequest = getPackageRequest(response, context);
+			ScanResult scanResult = scanPackage(checkmarxClient, packageRequest);
+			if (scanResult.getRisks().size() > 0) {
+				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin. Package name: \"{0}/{1}\" contains the following risks: {2}", packageRequest.getType(), packageRequest.getName(), scanResult.getRisks());
+				LOG.error(errorMessage);
+				throw new RuntimeException(errorMessage);
+			}
+
+			return response;
+		} catch (PackageTypeNotSupportedException e) {
+			// TODO log
+			return response;
+		}
+	}
+
+	private PackageRequest getPackageRequest(Response response, Context context) throws PackageTypeNotSupportedException {
+		String packageType = "";
+		String packageName = "";
+		String packageVersion = "";
+
 		Repository repository = context.getRepository();
-		LOG.info("repository: {}, {}", repository.getName(), repository.getType());
+		String repositoryName = repository.getName();
+		Type repositoryType = repository.getType();
+		LOG.info("repository: {}, {}", repositoryName, repositoryType);
 
 		Payload payload = response.getPayload();
+		if (!(payload instanceof Content)) {
+			throw new RuntimeException("could not parse response");
+		}
+		Asset asset = ((Content) payload).getAttributes().get(Asset.class);
+		if (asset == null) {
+			throw new RuntimeException("could not parse response");
+		}
+
 		ScanResult scanResult = null;
+		PackageRequest packageRequest = null;
 		String repositoryFormat = repository.getFormat().getValue();
 		switch (repositoryFormat) {
 			case "maven2": {
-				LOG.info("scanning maven2 repository");
-				scanResult = mavenScanner.scan(context, payload, CheckmarxClient);
-				LOG.info("scanResult: {}", scanResult);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
+				Object mavenPathAttribute = context.getAttributes().get(MavenPath.class.getName());
+				if (!(mavenPathAttribute instanceof MavenPath)) {
+					LOG.warn("Could not extract maven path from {}", context.getRequest().getPath());
+					return null;
+				}
+
+				MavenPath mavenPath = (MavenPath) mavenPathAttribute;
+				MavenPath parsedMavenPath = mavenPathParser.parsePath(mavenPath.getPath());
+				MavenPath.Coordinates coordinates = parsedMavenPath.getCoordinates();
+				if (coordinates == null) {
+					LOG.warn("Coordinates are null for {}", parsedMavenPath);
+					return null;
+				}
+
+
 				break;
 			}
 			case "npm": {
-				LOG.info("scanning npm repository");
-				scanResult = npmScanner.scan(context, payload, CheckmarxClient);
-				LOG.info("scanResult: {}", scanResult);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
 				break;
 			}
 			case "pypi": {
-				LOG.info("scanning pypi repository");
-				scanResult = pypiScanner.scan(context, payload, CheckmarxClient);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
+				packageType = "pypi";
+				NestedAttributesMap pypiAttributes = asset.attributes().child("pypi");
+				Object nameAttribute = pypiAttributes.get("name");
+				packageName = nameAttribute != null ? nameAttribute.toString() : "";
+				Object versionAttribute = pypiAttributes.get("version");
+				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
+
 				break;
 			}
 			case "rubygems": {
-				LOG.info("scanning rubygems repository");
-				scanResult = rubygemsScanner.scan(context, payload, CheckmarxClient);
-				LOG.info("scanResult: {}", scanResult);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
-				Log.info("scanResult: {}");
 				break;
 			}
 			case "nuget": {
-				LOG.info("scanning nuget repository");
-				scanResult = nugetScanner.scan(context, payload, CheckmarxClient);
-				LOG.info("scanResult: {}", scanResult);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
 				break;
 			}
 			default:
-				LOG.error("format {} is not supported", repositoryFormat);
-				LOG.info("scanResult: {}", scanResult);
-				LOG.info("scanResult Count: {}", scanResult.risksCount);
-				LOG.info("scanResult Type: {}", scanResult.risksType);
-				return response;
+				throw new PackageTypeNotSupportedException(MessageFormat.format("package type \"{0}\" not supported", repositoryFormat));
+
 		}
 
-		validateRisks(scanResult, context.getRequest().getPath());
-		return response;
+		packageRequest = new PackageRequest(packageType, packageName, packageVersion);
+		return packageRequest;
 	}
 
 
 	public void initializeModuleIfNeeded() {
-		if (CheckmarxClient == null) {
-			CheckmarxClient = configurationHelper.getCheckmarxClient();
+		if (checkmarxClient == null) {
+			checkmarxClient = configurationHelper.getCheckmarxClient();
 		}
 		if (configuration == null) {
 			configuration = configurationHelper.getConfiguration();
 		}
 	}
 
-	private void validateRisks(ScanResult scanResult, @Nonnull String path) {
-		if (scanResult == null) {
-			LOG.warn("Component could not be scanned, check the logs scanner modules: {}", path);
-		}
-
-	}
 
 }
