@@ -24,6 +24,8 @@ import org.sonatype.nexus.repository.view.Context;
 import org.sonatype.nexus.repository.view.Payload;
 import org.sonatype.nexus.repository.view.Response;
 import org.sonatype.nexus.repository.view.handlers.ContributedHandler;
+import org.sonatype.nexus.repository.view.Status;
+
 import retrofit2.Call;
 
 import java.io.IOException;
@@ -83,6 +85,7 @@ public class ScannerHandler implements ContributedHandler {
 		}
 	}
 
+
 	@Nonnull
 	@Override
 	public Response handle(@Nonnull Context context) throws Exception {
@@ -96,14 +99,17 @@ public class ScannerHandler implements ContributedHandler {
 		}
 
 
-
 		try {
 			PackageRequest packageRequest = getPackageRequest(response, context);
 			ScanResult scanResult = scanPackage(checkmarxClient, packageRequest);
 			if (scanResult.getRisksCount() > 0) {
-				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin. Package name: \"{0}/{1}\" contains the following risks: {2}", packageRequest.getType(), packageRequest.getName(), scanResult.getRisksCount());
+				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin.\nPackage name: \"{0}/{1}\" contains {2} risks: {3}\n", packageRequest.getType(), packageRequest.getName(), scanResult.getRisksCount(), scanResult.getRisks());
 				LOG.error(errorMessage);
-				throw new RuntimeException(errorMessage);
+				response = new Response.Builder()
+					.status(new Status(false, 405, errorMessage))
+					.payload(response.getPayload())
+					.build();
+				return response;
 			}
 
 			return response;
