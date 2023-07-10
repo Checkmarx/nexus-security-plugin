@@ -54,7 +54,7 @@ public class ScannerHandler implements ContributedHandler {
 	}
 
 
-	private static ScanResult scanPackage(CheckmarxClient checkmarxClient, PackageRequest packageRequest) throws IOException {
+	private static ScanResult scanPackage(CheckmarxClient checkmarxClient, PackageRequest packageRequest) throws IOException, ApiRequestNotSupportedException {
 		ScanResult scanResult = new ScanResult();
 		List<PackageResponse> packageResponse;
 		ArrayList<PackageRequest> packageRequests = new ArrayList<>();
@@ -64,7 +64,9 @@ public class ScannerHandler implements ContributedHandler {
 		packageResponse = response.body();
 
 		if (!response.isSuccessful() || packageResponse == null) {
-			throw new RuntimeException(); // TODO exception
+			String errorMessage = MessageFormat.format("Checkmarx API call failed\nResponse body: {0}\nIs successful: {1}", response.body(), response.isSuccessful());
+			LOG.error(errorMessage);
+			throw new ApiRequestNotSupportedException();
 		}
 
 		for (PackageResponse result : packageResponse) {
@@ -79,9 +81,14 @@ public class ScannerHandler implements ContributedHandler {
 
 
 	private static class PackageTypeNotSupportedException extends Exception {
-
 		public PackageTypeNotSupportedException(String message) {
 			super(message);
+		}
+	}
+
+	private static class ApiRequestNotSupportedException extends Exception {
+		public ApiRequestNotSupportedException() {
+			super();
 		}
 	}
 
@@ -115,6 +122,9 @@ public class ScannerHandler implements ContributedHandler {
 			return response;
 		} catch (PackageTypeNotSupportedException e) {
 			LOG.warn("Package type not supported: {}", e.getMessage());
+			return response;
+		} catch (ApiRequestNotSupportedException e) {
+			LOG.warn("Checkmarx API request not supported: {}", e.getMessage());
 			return response;
 		}
 	}
@@ -169,16 +179,6 @@ public class ScannerHandler implements ContributedHandler {
 			}
 			case "pypi": {
 				packageType = PackageType.PYPI.getType();
-				NestedAttributesMap pypiAttributes;
-				pypiAttributes = asset.attributes().child(packageType);
-				Object nameAttribute = pypiAttributes.get("name");
-				packageName = nameAttribute != null ? nameAttribute.toString() : "";
-				Object versionAttribute = pypiAttributes.get("version");
-				packageVersion = versionAttribute != null ? versionAttribute.toString() : "";
-				break;
-			}
-			case "rubygems": {
-				packageType = PackageType.RUBYGEMS.getType();
 				NestedAttributesMap pypiAttributes;
 				pypiAttributes = asset.attributes().child(packageType);
 				Object nameAttribute = pypiAttributes.get("name");
