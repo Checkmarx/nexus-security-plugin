@@ -4,7 +4,7 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:8-jdk
-    working_directory: ~/nexus-snyk-security-plugin
+    working_directory: ~/nexus-checkmarx-security-plugin
     environment:
       MAVEN_OPTS: -Xmx3200m
     steps:
@@ -25,7 +25,7 @@ jobs:
   release:
     docker:
       - image: circleci/openjdk:8-jdk
-    working_directory: ~/nexus-snyk-security-plugin
+    working_directory: ~/nexus-checkmarx-security-plugin
     environment:
       MAVEN_OPTS: -Xmx3200m
     steps:
@@ -43,22 +43,22 @@ jobs:
             - ~/.m2
           key: maven-dependencies-{{ checksum "pom.xml" }}
       - persist_to_workspace:
-          root: ~/nexus-snyk-security-plugin
+          root: ~/nexus-checkmarx-security-plugin
           paths:
             - "*"
 
   publish-release-on-github:
     docker:
       - image: circleci/golang:1.13
-    working_directory: ~/nexus-snyk-security-plugin
+    working_directory: ~/nexus-checkmarx-security-plugin
     steps:
       - attach_workspace:
-          at: ~/nexus-snyk-security-plugin
+          at: ~/nexus-checkmarx-security-plugin
       - run:
           name: Publish release on GitHub
           command: |
             go get github.com/aktau/github-release
-            github-release upload --security-token $GH_TOKEN --user ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${CIRCLE_TAG} --name nexus-snyk-security-plugin-bundle.kar --file ./plugin/target/nexus-snyk-security-plugin-bundle.kar
+            github-release upload --security-token $GH_TOKEN --user ${CIRCLE_PROJECT_USERNAME} --repo ${CIRCLE_PROJECT_REPONAME} --tag ${CIRCLE_TAG} --name nexus-checkmarx-security-plugin-bundle.kar --file ./plugin/target/nexus-checkmarx-security-plugin-bundle.kar
 
 
 workflows:
