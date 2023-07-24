@@ -164,7 +164,10 @@ public class ScannerHandler implements ContributedHandler {
 					throw new RuntimeException(MessageFormat.format("Coordinates are null for {0}", parsedMavenPath));
 				}
 
-				// TODO -> set in package name type version the values
+				packageName = String.format("%s:%s", coordinates.getGroupId(), coordinates.getArtifactId());
+				packageVersion = coordinates.getVersion();
+				packageType = PackageType.MAVEN.getType();
+
 				break;
 			}
 			case "npm": {
