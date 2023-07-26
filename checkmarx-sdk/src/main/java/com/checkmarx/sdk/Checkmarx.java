@@ -8,7 +8,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.security.SecureRandom;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.checkmarx.sdk.api.v1.CheckmarxClient;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -20,15 +21,16 @@ import okhttp3.*;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Checkmarx {
+	private static final Logger LOG = LoggerFactory.getLogger(Checkmarx.class);
 
 	private static final String DEFAULT_BASE_URL = "https://api.dusti.co/v1/";
 	private static final String DEFAULT_USER_AGENT = "checkmarx-sdk-java";
-	private static final long DEFAULT_CONNECTION_TIMEOUT = 30_000L;
-	private static final long DEFAULT_READ_TIMEOUT = 60_000L;
-	private static final long DEFAULT_WRITE_TIMEOUT = 60_000L;
+	private static final long DEFAULT_CONNECTION_TIMEOUT = 30L;
+	private static final long DEFAULT_READ_TIMEOUT = 60L;
+	private static final long DEFAULT_WRITE_TIMEOUT = 60L;
 
 	private final Retrofit retrofit;
 
@@ -37,9 +39,9 @@ public class Checkmarx {
 			throw new IllegalArgumentException("Checkmarx API token is empty");
 		}
 
-		OkHttpClient.Builder builder = new OkHttpClient.Builder().connectTimeout(DEFAULT_CONNECTION_TIMEOUT, MILLISECONDS)
-			.readTimeout(DEFAULT_READ_TIMEOUT, MILLISECONDS)
-			.writeTimeout(DEFAULT_WRITE_TIMEOUT, MILLISECONDS);
+		OkHttpClient.Builder builder = new OkHttpClient.Builder().connectTimeout(DEFAULT_CONNECTION_TIMEOUT, SECONDS)
+			.readTimeout(DEFAULT_READ_TIMEOUT, SECONDS)
+			.writeTimeout(DEFAULT_WRITE_TIMEOUT, SECONDS);
 
 		configureProxy(builder, config);
 
@@ -75,6 +77,7 @@ public class Checkmarx {
 			String proxyPassword = config.proxyConfig.getProxyPassword();
 
 			if (proxyHost != null && proxyPort != 0) {
+				LOG.info("setup proxyHost and proxyPort");
 				InetSocketAddress proxyAddress = new InetSocketAddress(
 					proxyHost,
 					proxyPort
