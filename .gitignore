@@ -43,3 +43,5 @@ archive
 .nexus
 target
 .nexus-good-config
+*.class
+*/bin/*

@@ -96,6 +96,7 @@ public class ScannerHandler implements ContributedHandler {
 	@Nonnull
 	@Override
 	public Response handle(@Nonnull Context context) throws Exception {
+		initializeModuleIfNeeded();
 		Response response = context.proceed();
 
 		LOG.info(MessageFormat.format("checking {0}", context.getRequest().getPath()));
@@ -107,7 +108,8 @@ public class ScannerHandler implements ContributedHandler {
 
 
 		try {
-			PackageRequest packageRequest = getPackageRequest(response, context);
+			Payload payload = response.getPayload();
+			PackageRequest packageRequest = getPackageRequest(payload, context);
 			ScanResult scanResult = scanPackage(checkmarxClient, packageRequest);
 			if (scanResult.getRisksCount() > 0) {
 				String errorMessage = MessageFormat.format("Package download blocked by Checkmarx Supply Chain Security Plugin.\nPackage name: \"{0}/{1}\" contains {2} risks: {3}\n", packageRequest.getType(), packageRequest.getName(), scanResult.getRisksCount(), scanResult.getRisks());
@@ -129,27 +131,31 @@ public class ScannerHandler implements ContributedHandler {
 		}
 	}
 
-	private PackageRequest getPackageRequest(Response response, Context context) throws PackageTypeNotSupportedException {
+	private PackageRequest getPackageRequest(Payload payload, Context context) throws PackageTypeNotSupportedException {
 		String packageType = "";
 		String packageName = "";
 		String packageVersion = "";
-
 		Repository repository = context.getRepository();
 		String repositoryName = repository.getName();
 		Type repositoryType = repository.getType();
+		String repositoryFormat = repository.getFormat().getValue();
 		LOG.info("repository: {}, {}", repositoryName, repositoryType);
 
-		Payload payload = response.getPayload();
-		if (!(payload instanceof Content)) {
-			throw new RuntimeException("could not parse response");
-		}
-		Asset asset = ((Content) payload).getAttributes().get(Asset.class);
-		if (asset == null) {
-			throw new RuntimeException("could not parse response");
+		Asset asset;
+		if(!repositoryFormat.equals("maven2")) {
+			if (!(payload instanceof Content)) {
+				LOG.info("repository: {}, {}", repositoryName, repositoryType);
+				LOG.info("context.getAttributes: {}",  context.getAttributes());
+				LOG.info("context.getRequest: {}",  context.getRequest());
+				LOG.info("repositoryFormat: {}", repositoryFormat);
+				LOG.info("payload: {}", payload);
+				String npmpath = context.getRequest().getPath();
+				LOG.info("npmpath : {}", npmpath);
+				throw new RuntimeException("could not parse response");
+			}
 		}
 
 		PackageRequest packageRequest;
-		String repositoryFormat = repository.getFormat().getValue();
 		switch (repositoryFormat) {
 			case "maven2": {
 				Object mavenPathAttribute = context.getAttributes().get(MavenPath.class.getName());
@@ -171,6 +177,10 @@ public class ScannerHandler implements ContributedHandler {
 				break;
 			}
 			case "npm": {
+				asset = ((Content) payload).getAttributes().get(Asset.class);
+				if (asset == null) {
+					throw new RuntimeException("could not parse response");
+				}
 				packageType = PackageType.NPM.getType();
 				NestedAttributesMap pypiAttributes;
 				pypiAttributes = asset.attributes().child(packageType);
@@ -181,6 +191,10 @@ public class ScannerHandler implements ContributedHandler {
 				break;
 			}
 			case "pypi": {
+				asset = ((Content) payload).getAttributes().get(Asset.class);
+				if (asset == null) {
+					throw new RuntimeException("could not parse response");
+				}
 				packageType = PackageType.PYPI.getType();
 				NestedAttributesMap pypiAttributes;
 				pypiAttributes = asset.attributes().child(packageType);
@@ -191,6 +205,10 @@ public class ScannerHandler implements ContributedHandler {
 				break;
 			}
 			case "nuget": {
+				asset = ((Content) payload).getAttributes().get(Asset.class);
+				if (asset == null) {
+					throw new RuntimeException("could not parse response");
+				}
 				packageType = PackageType.NUGET.getType();
 				NestedAttributesMap pypiAttributes = asset.attributes().child(packageType);
 				Object nameAttribute = pypiAttributes.get("name");
@@ -210,9 +228,11 @@ public class ScannerHandler implements ContributedHandler {
 
 	public void initializeModuleIfNeeded() {
 		if (checkmarxClient == null) {
+			LOG.debug("initializeModuleIfNeeded: checkmarxClient == null");
 			checkmarxClient = configurationHelper.getCheckmarxClient();
 		}
 		if (configuration == null) {
+			LOG.debug("initializeModuleIfNeeded: configuration == null");
 			configuration = configurationHelper.getConfiguration();
 		}
 	}
